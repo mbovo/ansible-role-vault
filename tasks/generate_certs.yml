@@ -19,19 +19,62 @@
   tags:
     - tls
 
-- name: "Generate CA cert/key"
-  shell: vault tls ca create
-  args:
-    chdir: /etc/vault.d/tls
+- name: "Purge old config files"
+  file:
+    state: absent
+    path: "{{ role_path }}/files/tls"
+  delegate_to: localhost
   run_once: true
-  delegate_to: "{{ groups['vault_servers'][0] }}"
-  when: not tls_ca.stat.exists
-  tags:
-    - tls
 
-- name: Generate a Self Signed Server certificate
-  openssl_certificate:
-    path: /etc/vault.d/tls/server.pem
-    privatekey_path: /etc/vault.d/tls/server.key.pem
-    csr_path: /etc/vault.d/tls/server.csr
-    provider: selfsigned
+- name: "Create local temporary path"
+  file:
+    state: directory
+    path: "{{ role_path }}/files/tls"
+  delegate_to: localhost
+  run_once: true
+
+- name: "Generate cfssl config files"
+  lineinfile:
+    create: yes
+    path: "{{ role_path }}/files/tls/{{ item.path }}"
+    line: "{{ item.line | to_nice_json }}"
+  delegate_to: localhost
+  run_once: true
+  with_items:
+    - path: "ca-config.json"
+      line: "{{ cfssl.config }}"
+    - path: "ca-csr.json"
+      line: "{{ cfssl.csr.ca }}"
+
+- name: "Generate cfssl config files for each server"
+  lineinfile:
+    create: yes
+    path: "{{ role_path }}/files/tls/{{ item.path }}"
+    line: "{{ item.line | to_nice_json }}"
+  delegate_to: localhost
+  with_items:
+    - path: "server-{{ ansible_hostname }}.json"
+      line: "{{ cfssl.csr.server }}"
+
+- name: "Generate CA Certificate"
+  shell: cfssl gencert -initca ca-csr.json | cfssljson -bare ca -
+  args:
+    chdir: "{{ role_path }}/files/tls"
+  run_once: true
+  delegate_to: localhost
+
+- name: "Generate Server Certificate"
+  shell: cfssl gencert -ca=ca.pem -ca-key=ca-key.pem -config=ca-config.json -profile=server server-{{ ansible_hostname }}.json | cfssljson -bare server && mv server.pem {{ ansible_hostname }}-server.pem && mv server-key.pem {{ ansible_hostname }}-server-key.pem
+  args:
+    chdir: "{{ role_path }}/files/tls"
+  delegate_to: localhost
+
+- name: "Upload Certificates to server"
+  copy:
+    src: "tls/{{ ansible_hostname }}-{{ item }}"
+    dest: "/etc/vault.d/tls/{{ item }}"
+  notify: Restart Vault
+  with_items:
+    - server.pem
+    - server-key.pem
+

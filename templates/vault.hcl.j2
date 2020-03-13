@@ -4,7 +4,7 @@ listener "tcp" {
 
 {% if vault_use_tls|bool %}
   tls_cert_file = "/etc/vault.d/tls/server.pem"
-  tls_key_file  = "/etc/vault.d/tls/server.key.pem"
+  tls_key_file  = "/etc/vault.d/tls/server-key.pem"
 {% else %}
   tls_disable   = "true"
 {% endif %}

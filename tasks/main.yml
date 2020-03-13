@@ -1,14 +1,14 @@
-- name: "Verify 'action' variable"
+- name: "Verify 'step' variable"
   fail:
-    msg: "action must be on of [install|delete|restart]"
-  when: action not in ('install','delete','restart')
+    msg: "step must be on of [install|delete|restart]"
+  when: step not in ('install','delete','restart')
 
 - name: "Verify tls variables"
   fail:
     msg: "You cannot use both vault_tls_generate and vault_tls_provided"
   when: vault_use_tls and vault_tls_generate and vault_tls_provided
 
-- include_tasks: "{{ action }}.yml"
+- include_tasks: "{{ step }}.yml"
   tags:
     - install
     - tls

@@ -2,3 +2,46 @@
 # vars file for ansible-role-vault
 
 vault_download_url: "https://releases.hashicorp.com/vault/{{ vault_version }}/vault_{{ vault_version }}_linux_amd64.zip"
+
+cfssl:
+  config:
+    signing:
+      default:
+        expiry: 43800h
+      profiles:
+        server:
+          expiry: 43800h
+          usages:
+            - signing
+            - key encipherment
+            - server auth
+        client:
+          expiry: 43800h
+          usages:
+            - signing
+            - key encipherment
+            - client auth
+  csr:
+    ca:
+      CN: "Vault Test CA"
+      key:
+        algo: rsa
+        size: 2048
+      names:
+        - C: US
+          L: CA
+          O: "My company"
+          ST: "San Francisco"
+          OU: "My org unit"
+    server:
+      CN: "{{ ansible_hostname }}"
+      hosts:
+        - "127.0.0.1"
+        - "{{ inventory_hostname }}"
+      key:
+        algo: rsa
+        size: 2048
+      names:
+        - C: "US"
+          ST: "CA"
+          L: "San Francisco"

@@ -1,7 +1,7 @@
 ---
 
-# Action must be one of (install|delete|restart)
-action: install
+# Action step must be one of (install|delete|restart)
+step: install
 
 vault_version: "1.3.3"
 vault_sha256: "sha256:cf5c8cdea96421d73f4145ca2884a0cedd6d080b38288cdc2be96143db7b62ce"
@@ -17,8 +17,8 @@ vault_tls_provided: false
 
 # Path/filename from which load TLS certificates 
 
-#vault_tls_key_file:
-#vault_tls_server_file:
-#vault_tls_ca_file:
+vault_tls_key_file: tls/server-key.pem
+vault_tls_server_file: tls/server.pem
+vault_tls_ca_file: tls/ca.pem
 
 vault_enable_ui: true
