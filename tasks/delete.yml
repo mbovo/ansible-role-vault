@@ -1,0 +1,30 @@
+---
+# tasks file for ansible-role-vault
+- name: Restart vault
+  systemd:
+    name: vault
+    state: stopped
+  ignore_errors: true
+  when: inventory_hostname in groups['vault_servers']
+
+- name: Delete the vault Files and Folders
+  block:
+    - name: Main Folder
+      file:
+        path: /etc/vault.d
+        state: absent
+
+    - name: vault service
+      file:
+        path: /etc/systemd/system/vault.service
+        state: absent
+      when: inventory_hostname in groups['vault_servers']
+
+    - name: Reload systemd
+      systemd:
+        daemon_reload: yes
+
+    - name: Delete vault binary
+      file:
+        path: /usr/local/bin/vault
+        state: absent

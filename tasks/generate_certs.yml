@@ -1,0 +1,37 @@
+- name: "Verify presence of an old ca certificate"
+  stat:
+    path: /etc/vault.d/tls/vault-ca.pem
+  register: tls_ca
+  tags:
+    - tls
+
+- name: "Verify presence of an old server certificate"
+  stat:
+    path: "/etc/vault.d/tls/server.pem"
+  register: tls_srv
+  tags:
+    - tls
+
+- name: "Verify presence of an old server key"
+  stat:
+    path: "/etc/vault.d/tls/server.key.pem"
+  register: tls_srv_key
+  tags:
+    - tls
+
+- name: "Generate CA cert/key"
+  shell: vault tls ca create
+  args:
+    chdir: /etc/vault.d/tls
+  run_once: true
+  delegate_to: "{{ groups['vault_servers'][0] }}"
+  when: not tls_ca.stat.exists
+  tags:
+    - tls
+
+- name: Generate a Self Signed Server certificate
+  openssl_certificate:
+    path: /etc/vault.d/tls/server.pem
+    privatekey_path: /etc/vault.d/tls/server.key.pem
+    csr_path: /etc/vault.d/tls/server.csr
+    provider: selfsigned

@@ -3,12 +3,14 @@ listener "tcp" {
   cluster_addr  = "{{ inventory_hostname }}:8201"
 
 {% if vault_use_tls|bool %}
-  tls_cert_file = "/path/to/fullchain.pem"
-  tls_key_file  = "/path/to/privkey.pem"
+  tls_cert_file = "/etc/vault.d/tls/server.pem"
+  tls_key_file  = "/etc/vault.d/tls/server.key.pem"
 {% else %}
   tls_disable   = "true"
 {% endif %}
-
+  telemetry {
+    unauthenticated_metrics_access = true
+  }
 }
 
 storage "consul" {

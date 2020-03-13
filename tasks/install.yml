@@ -1,0 +1,139 @@
+---
+# tasks file for ansible-role-vault
+
+- name: Install Necessary Packages
+  package:
+   name: 
+    - wget
+    - unzip
+   state: latest
+
+- name: Create the Vault Group
+  group:
+   name: vault
+   system: yes
+
+- name: Create the Vault User
+  user:
+   name: vault
+   system: yes
+   group: vault
+   createhome: no
+   home: /etc/vault.d
+   shell: /bin/false
+   comment: A service account to run Vault
+
+
+# fetch url
+- name: "Install Vault {{vault_version}}"
+  block:
+    - name: "Download Vault binary"
+      get_url:
+        url: "{{ vault_download_url }}"
+        dest: "{{ role_path }}/files/vault.zip"
+        checksum: "{{ vault_sha256 }}"
+      run_once: true
+      delegate_to: localhost
+
+    - name: "Upload binary to host"
+      copy:
+        src: vault.zip
+        dest: /tmp/vault.zip
+        owner: root
+        group: root
+        mode: 0744
+        seuser: system_u
+        serole: object_r
+        setype: usr_t
+        selevel: s0
+
+    - name: "Extract"
+      unarchive:
+        src: "/tmp/vault.zip"
+        dest: "/usr/local/bin"
+        remote_src: yes
+        creates: /usr/local/bin/vault
+
+    - name: Set Vault Permissions
+      file:
+        path: /usr/local/bin/vault
+        state: file
+        owner: root
+        group: vault
+        mode: 0755
+        seuser: system_u
+        serole: object_r
+        setype: bin_t
+        selevel: s0
+
+- name: Create the Vault Files and Folders
+  block:
+    - name: Main Folder
+      file:
+        path: /etc/vault.d
+        state: directory
+        owner: root
+        group: vault
+        mode: 0755
+        seuser: system_u
+        serole: object_r
+        setype: etc_t
+        selevel: s0
+
+    - name: SSL Folder
+      file:
+        path: /etc/vault.d/ssl
+        state: directory
+        owner: root
+        group: vault
+        mode: 0755
+        seuser: system_u
+        serole: object_r
+        setype: cert_t
+        selevel: s0
+      when: vault_use_tls|bool
+
+
+- name: "Generate TLS certificates"
+  include_tasks: generate_certs.yml
+  when: vault_use_tls|bool and vault_tls_generate|bool
+  tags:
+    - tls
+
+- name: "Load provided TLS certificates"
+  include_tasks: load_certs.yml
+  when: vault_use_tls|bool and vault_tls_provided|bool
+  tags:
+    - tls
+    
+- name: Add Vault Service
+  copy:
+   src: vault.service
+   dest: /etc/systemd/system/vault.service
+   owner: root
+   group: vault
+   mode: 0755
+   seuser: system_u
+   serole: object_r
+   setype: systemd_unit_file_t
+   selevel: s0
+  notify: Restart Vault
+  tags:
+    - configure
+
+- name: Reload systemd
+  systemd:
+    daemon_reload: yes
+  tags:
+    - configure
+
+- name: Apply minimal configuration
+  template:
+    src: vault.hcl.j2
+    dest: /etc/vault.d/vault.hcl
+    owner: vault
+    group: vault
+    mode: 0640
+  notify: Restart Vault
+  tags:
+    - configure
