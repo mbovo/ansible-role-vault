@@ -27,11 +27,18 @@
 # fetch url
 - name: "Install Vault {{vault_version}}"
   block:
-    - name: "Download"
+    - name: "Download Vault binary"
       get_url:
         url: "{{ vault_download_url }}"
-        dest: "/tmp/vault.zip"
-        checksum: "sha256:{{vault_sha256}}"
+        dest: "{{ role_path }}/files/vault.zip"
+        checksum: "{{ vault_sha256 }}"
+      run_once: true
+      delegate_to: localhost
+
+    - name: "Upload binary to host"
+      copy:
+        src: vault.zip
+        dest: /tmp/vault.zip
         owner: root
         group: root
         mode: 0744
@@ -45,6 +52,7 @@
         src: "/tmp/vault.zip"
         dest: "/usr/local/bin"
         remote_src: yes
+        creates: /usr/local/bin/vault
 
     - name: Set Vault Permissions
       file:
@@ -95,7 +103,23 @@
    serole: object_r
    setype: systemd_unit_file_t
    selevel: s0
+  notify: Restart Vault
+  tags:
+    - configure
 
 - name: Reload systemd
   systemd:
     daemon_reload: yes
+  tags:
+    - configure
+
+- name: Apply minimal configuration
+  template:
+    src: vault.hcl.j2
+    dest: /etc/vault.d/vault.hcl
+    owner: vault
+    group: vault
+    mode: 0640
+  notify: Restart Vault
+  tags:
+    - configure

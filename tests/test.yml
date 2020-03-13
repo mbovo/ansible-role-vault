@@ -1,5 +1,5 @@
 ---
-- hosts: test
+- hosts: vault
   remote_user: root
   roles:
     - ansible-role-vault

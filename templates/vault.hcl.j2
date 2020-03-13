@@ -1,0 +1,24 @@
+listener "tcp" {
+  address       = "0.0.0.0:8200"
+  cluster_addr  = "{{ inventory_hostname }}:8201"
+
+{% if vault_use_tls|bool %}
+  tls_cert_file = "/path/to/fullchain.pem"
+  tls_key_file  = "/path/to/privkey.pem"
+{% else %}
+  tls_disable   = "true"
+{% endif %}
+
+}
+
+storage "consul" {
+  address = "127.0.0.1:8500"
+  path    = "vault/"
+}
+
+api_addr = "http://{{ inventory_hostname }}:8200"
+cluster_addr = "https://{{ inventory_hostname }}:8201"
+
+{% if vault_enable_ui|bool %}
+ui = true
+{% endif %}
